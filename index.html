@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공기 신호등 | 실시간 대기오염 모니터링</title>
+  <!-- Pretendard 웹폰트 불러오기 -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <!-- Chart.js CDN 불러오기 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 분리된 CSS 스타일시트 파일을 불러옵니다. -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 화면 상단 헤더 및 지역 선택 영역 -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-icon">🚦</span>
+          <div class="brand-text">
+            <h1>공기 신호등</h1>
+            <p class="subtitle">실시간 대기오염 모니터링</p>
+          </div>
+        </div>
+
+        <!-- 시도 선택 드롭다운 -->
+        <div class="select-box">
+          <label for="sidoSelect">지역 선택</label>
+          <div class="select-wrapper">
+            <select id="sidoSelect">
+              <option value="서울" selected>서울</option>
+              <option value="부산">부산</option>
+              <option value="대구">대구</option>
+              <option value="인천">인천</option>
+              <option value="광주">광주</option>
+              <option value="대전">대전</option>
+              <option value="울산">울산</option>
+              <option value="세종">세종</option>
+              <option value="경기">경기</option>
+              <option value="강원">강원</option>
+              <option value="충북">충북</option>
+              <option value="충남">충남</option>
+              <option value="전북">전북</option>
+              <option value="전남">전남</option>
+              <option value="경북">경북</option>
+              <option value="경남">경남</option>
+              <option value="제주">제주</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 맨 위: 그 지역 대표 상태를 아주 크게 보여주는 공기 신호등 카드 -->
+    <section id="trafficLightCard" class="traffic-card grade-neutral">
+      <div class="traffic-card-top">
+        <div class="region-badge">
+          <span class="pulse-dot"></span>
+          <span id="averageRegionName">서울</span> 대기 신호등
+        </div>
+        <div id="latestTime" class="latest-time">불러오는 중...</div>
+      </div>
+
+      <div class="traffic-card-body">
+        <!-- 대표 상태 이모지 (🔵🟢🟠🔴) -->
+        <div id="trafficEmoji" class="traffic-emoji">⚪</div>
+        
+        <div class="traffic-info">
+          <!-- 대표 등급 텍스트 (좋음/보통/나쁨/매우나쁨) -->
+          <div class="traffic-status-row">
+            <span id="trafficStatusText" class="traffic-status-text">불러오는 중...</span>
+          </div>
+          <!-- 평균 수치 표시 -->
+          <div class="traffic-value-row">
+            <span class="value-label">평균 미세먼지(PM10)</span>
+            <span id="averageValue" class="average-number">-</span>
+            <span class="average-unit">㎍/㎥</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 그 아래 한 줄 안내 문구: 나쁨 이상이면 '외출 시 마스크를 챙기세요' -->
+      <div class="traffic-card-footer">
+        <p id="trafficNotice" class="traffic-notice">대기 정보를 확인하고 있습니다...</p>
+      </div>
+    </section>
+
+    <!-- 상위 10개 측정소 미세먼지 비교 가로 막대그래프 섹션 -->
+    <section id="chartSection" class="chart-section" style="display: none;">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrap">
+            <span class="chart-icon">📊</span>
+            <div>
+              <h3>미세먼지 수치 상위 10개 측정소</h3>
+              <p class="chart-subtitle"><span id="chartRegionName">서울</span> 지역에서 실시간 수치가 가장 높은 측정소 (단위: ㎍/㎥)</p>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="topStationsChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 측정소 카드들이 나열되는 메인 목록 영역 -->
+    <main class="main-content">
+      <div class="section-header">
+        <h2>측정소별 실시간 측정 현황</h2>
+        <span id="stationCount" class="station-count">조회 대기 중</span>
+      </div>
+
+      <!-- 데이터를 불러오는 동안 '불러오는 중...' 표시 -->
+      <div id="loadingIndicator" class="loading-box" style="display: none;">
+        <div class="spinner"></div>
+        <span class="loading-text">불러오는 중...</span>
+      </div>
+
+      <!-- 안내 및 에러 메시지 -->
+      <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+      <!-- 측정소별 카드 그리드 -->
+      <div id="stationGrid" class="station-grid"></div>
+    </main>
+
+    <!-- 하단 푸터 -->
+    <footer class="app-footer">
+      <p>본 데이터는 한국환경공단 에어코리아에서 제공하는 공공데이터포털 오픈API를 기반으로 실시간 제공됩니다.</p>
+    </footer>
+  </div>
+
+  <!-- 분리된 자바스크립트 로직 파일을 불러옵니다. -->
+  <script src="script.js"></script>
+</body>
+</html>
